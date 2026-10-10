@@ -1,0 +1,34 @@
+services:
+  db:
+    image: postgres:15
+    container_name: drrcp-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: drrcp
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - drrcp_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d drrcp"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Optional DB browser: docker compose --profile tools up -d  ->  http://localhost:5050
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: drrcp-pgadmin
+    profiles: ["tools"]
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@drrcp.test
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
+
+volumes:
+  drrcp_pgdata:
