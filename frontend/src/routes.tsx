@@ -1,0 +1,97 @@
+import { Routes, Route } from 'react-router-dom';
+import { PublicShell } from './components/layout/PublicShell';
+import { AppShell } from './components/layout/AppShell';
+import { RequireRole } from './components/layout/RequireRole';
+
+// Public pages
+import { HomePage } from './features/auth/pages/HomePage';
+import { LoginPage } from './features/auth/pages/LoginPage';
+import { ReportPage } from './features/incidents/pages/ReportPage';
+import { ReportSuccessPage } from './features/incidents/pages/ReportSuccessPage';
+import { TrackPage } from './features/incidents/pages/TrackPage';
+import { TrackEditPage } from './features/incidents/pages/TrackEditPage';
+import { NotFoundPage } from './features/auth/pages/NotFoundPage';
+
+// Coordinator pages
+import { IncidentListPage } from './features/incidents/pages/IncidentListPage';
+import { IncidentDetailPage } from './features/incidents/pages/IncidentDetailPage';
+import { DispatchPage } from './features/dispatch/pages/DispatchPage';
+import { OperationsPage } from './features/dispatch/pages/OperationsPage';
+import { CoordinatorMapPage } from './features/dispatch/pages/CoordinatorMapPage';
+import { TeamListPage } from './features/rescue/pages/TeamListPage';
+import { TeamDetailPage } from './features/rescue/pages/TeamDetailPage';
+
+// Rescue Team pages
+import { RescueTeamDashboard } from './features/rescue/pages/RescueTeamDashboard';
+
+// Shared pages
+import { NotificationsPage } from './features/notifications/NotificationsPage';
+
+// Dev pages
+import { DevMapPage } from './features/map/DevMapPage';
+
+export function AppRoutes() {
+  return (
+    <Routes>
+      {/* Public routes (no auth required) */}
+      <Route element={<PublicShell />}>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/report" element={<ReportPage />} />
+        <Route path="/report/success" element={<ReportSuccessPage />} />
+        <Route path="/track" element={<TrackPage />} />
+        <Route path="/track/:ref/edit" element={<TrackEditPage />} />
+      </Route>
+
+      <Route path="/login" element={<LoginPage />} />
+
+      {/* Authenticated App routes */}
+      <Route element={<AppShell />}>
+        
+        {/* Any logged-in user */}
+        <Route
+          path="/notifications"
+          element={
+            <RequireRole allowed={['citizen', 'coordinator', 'rescue_team_member', 'system_administrator', 'volunteer']}>
+              <NotificationsPage />
+            </RequireRole>
+          }
+        />
+
+        {/* Coordinator routes */}
+        <Route
+          path="/coordinator"
+          element={
+            <RequireRole allowed={['coordinator', 'system_administrator']}>
+              <IncidentListPage />
+            </RequireRole>
+          }
+        >
+          <Route path="incidents" element={<IncidentListPage />} />
+          <Route path="incidents/:id" element={<IncidentDetailPage />} />
+          <Route path="dispatch/:incidentId" element={<DispatchPage />} />
+          <Route path="operations" element={<OperationsPage />} />
+          <Route path="map" element={<CoordinatorMapPage />} />
+          <Route path="teams" element={<TeamListPage />} />
+          <Route path="teams/:id" element={<TeamDetailPage />} />
+        </Route>
+
+        {/* Rescue Team routes */}
+        <Route
+          path="/team"
+          element={
+            <RequireRole allowed={['rescue_team_member']}>
+              <RescueTeamDashboard />
+            </RequireRole>
+          }
+        />
+
+        {/* Dev only routes */}
+        {import.meta.env.DEV && <Route path="/dev/map" element={<DevMapPage />} />}
+
+      </Route>
+
+      {/* 404 Catch-all */}
+      <Route path="*" element={<NotFoundPage />} />
+    </Routes>
+  );
+}

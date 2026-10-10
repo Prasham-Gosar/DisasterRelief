@@ -66,7 +66,40 @@ def seed_incidents(db: Session, coord: Coordinator, citizens: list[Citizen]) -> 
 
 
 def seed_dispatch(db: Session) -> None:
-    """Person B: seed 5 teams, 2-3 members each, and the rescue demo accounts (contract 0.10)."""
+    """Person B: 5 teams, 2-3 members each, rescue demo accounts (contract 0.10)."""
+    from app.core.enums import MemberStatus, TeamStatus
+    from app.models.app_setting import AppSetting
+    from app.models.rescue_team import RescueTeam
+    from app.models.rescue_team_member import RescueTeamMember
+
+    teams = [
+        ("TEAM-001", "Fire Team Alpha", "fire", 19.1136, 72.8697, "Andheri Fire Station", "fire.alpha", 3),
+        ("TEAM-002", "Fire Team Beta", "fire", 19.0726, 72.8845, "Kurla Fire Station", "fire.beta", 2),
+        ("TEAM-003", "Medical Team Bravo", "medical", 19.0178, 72.8478, "Dadar Medical Post", "med.bravo", 3),
+        ("TEAM-004", "NDRF Team Charlie", "ndrf", 19.0596, 72.8295, "Bandra NDRF Base", "ndrf.charlie", 3),
+        ("TEAM-005", "Local Rescue Delta", "local", 19.2307, 72.8567, "Borivali Ward Office", "local.delta", 2),
+    ]
+    phone = 9100000000
+    for code, name, ttype, lat, lng, base, prefix, count in teams:
+        team = RescueTeam(public_code=code, name=name, team_type=ttype, status=TeamStatus.available.value,
+                          latitude=lat, longitude=lng, base_location=base)
+        db.add(team)
+        db.flush()
+        
+        from app.core.security import hash_password
+        for i in range(1, count + 1):
+            phone += 1
+            member = RescueTeamMember(
+                name=f"{name} Member {i}",
+                email=f"{prefix}{i}@drrcp.test",
+                phone_number=str(phone),
+                password_hash=hash_password("Rescue@123"),
+                team_id=team.id,
+                member_status=MemberStatus.available.value,
+            )
+            db.add(member)
+        db.flush()
+
 
 
 def run() -> None:
