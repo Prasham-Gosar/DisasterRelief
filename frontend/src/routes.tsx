@@ -1,10 +1,10 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Outlet, Navigate } from 'react-router-dom';
 import { PublicShell } from './components/layout/PublicShell';
 import { AppShell } from './components/layout/AppShell';
 import { RequireRole } from './components/layout/RequireRole';
 
 // Public pages
-import { HomePage } from './features/auth/pages/HomePage';
+import { HomePage } from './features/incidents/pages/HomePage';
 import { LoginPage } from './features/auth/pages/LoginPage';
 import { ReportPage } from './features/incidents/pages/ReportPage';
 import { ReportSuccessPage } from './features/incidents/pages/ReportSuccessPage';
@@ -46,7 +46,7 @@ export function AppRoutes() {
 
       {/* Authenticated App routes */}
       <Route element={<AppShell />}>
-        
+
         {/* Any logged-in user */}
         <Route
           path="/notifications"
@@ -62,10 +62,11 @@ export function AppRoutes() {
           path="/coordinator"
           element={
             <RequireRole allowed={['coordinator', 'system_administrator']}>
-              <IncidentListPage />
+              <Outlet />
             </RequireRole>
           }
         >
+          <Route index element={<Navigate to="incidents" replace />} />
           <Route path="incidents" element={<IncidentListPage />} />
           <Route path="incidents/:id" element={<IncidentDetailPage />} />
           <Route path="dispatch/:incidentId" element={<DispatchPage />} />
@@ -80,10 +81,12 @@ export function AppRoutes() {
           path="/team"
           element={
             <RequireRole allowed={['rescue_team_member']}>
-              <RescueTeamDashboard />
+              <Outlet />
             </RequireRole>
           }
-        />
+        >
+          <Route index element={<RescueTeamDashboard />} />
+        </Route>
 
         {/* Dev only routes */}
         {import.meta.env.DEV && <Route path="/dev/map" element={<DevMapPage />} />}
