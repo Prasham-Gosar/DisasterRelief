@@ -7,7 +7,7 @@ Person B adds RescueTeamMember(User) in models/rescue_team_member.py
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, DateTime, Integer, String, event, select
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, event, select
 from sqlalchemy.orm import Mapped, Session, mapped_column
 from sqlalchemy.orm.attributes import set_committed_value
 
@@ -40,7 +40,7 @@ class User(Base):
     skills: Mapped[Optional[str]] = mapped_column(String(255))  # volunteer only
     member_status: Mapped[Optional[str]] = mapped_column(String(20))  # rescue member only (MemberStatus)
     # rescue member only. NOTE: foreign key -> rescue_teams.id is added once Person B's model is merged.
-    team_id: Mapped[Optional[int]] = mapped_column(Integer)
+    team_id: Mapped[Optional[int]] = mapped_column(ForeignKey("rescue_teams.id", use_alter=True, name="fk_users_team_id"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     __mapper_args__ = {"polymorphic_on": "role", "with_polymorphic": "*"}
