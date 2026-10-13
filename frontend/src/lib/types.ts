@@ -70,3 +70,124 @@ export interface Paginated<T> {
   page: number;
   page_size: number;
 }
+
+// ── Incident Models ──
+
+export interface IncidentDetail {
+  id: number;
+  tracking_ref?: string | null;
+  incident_type: IncidentType;
+  severity: Severity;
+  status: IncidentStatus;
+  location: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  description: string;
+  reporter_name?: string | null;
+  reporter_phone?: string | null;
+  photos?: string[];
+  type_specific?: Record<string, unknown>;
+  remark?: string | null;
+  closing_note?: string | null;
+  verified_by?: string | null;
+  verified_at?: string | null;
+  resolved_at?: string | null;
+  updated_at?: string | null;
+  created_at?: string | null;
+  possible_duplicate?: boolean;
+  duplicate_of_id?: number | null;
+  age_minutes?: number;
+  citizen_subscribed?: boolean;
+}
+
+// ── Dispatch Models ──
+
+export interface AvailableTeam {
+  team_id: number;
+  name: string;
+  team_type: TeamType;
+  distance_km?: number | null;
+  member_count: number;
+  suitable: boolean;
+  latitude?: number | null;
+  longitude?: number | null;
+}
+
+export interface AvailableTeamsResponse {
+  report_id: number;
+  items: AvailableTeam[];
+}
+
+export interface AssignmentResult {
+  assignment_id: number;
+  team: {
+    id: number;
+    name: string;
+    status: string;
+  };
+  members_acknowledged: number;
+  current_location: {
+    latitude?: number | null;
+    longitude?: number | null;
+  };
+}
+
+export interface AssignResponse {
+  report_id: number;
+  report_status: string;
+  assignments: AssignmentResult[];
+}
+
+// ── Notification Models ──
+
+export interface NotificationItem {
+  id: number;
+  message: string;
+  channel: Channel;
+  alert_type: AlertType;
+  recipient_user_id?: number | null;
+  recipient_phone?: string | null;
+  related_report_id?: number | null;
+  is_read: boolean;
+  delivery_status?: string;
+  sent_at?: string | null;
+  created_at: string;
+}
+
+export interface NotificationListResponse {
+  items: NotificationItem[];
+  total: number;
+  page: number;
+  page_size: number;
+  unread_count?: number;
+}
+
+// ── Rescue Team Models ──
+
+export interface TaskTeam {
+  id: number;
+  name: string;
+}
+
+export interface TaskReport {
+  id: number;
+  tracking_ref?: string | null;
+  incident_type: IncidentType;
+  severity: Severity;
+  status: IncidentStatus;
+  location: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  description: string;
+  reporter_phone?: string | null;
+}
+
+export interface RescueTask {
+  assignment_id: number;
+  status: AssignmentStatus;
+  assigned_at?: string | null;
+  en_route_at?: string | null;
+  on_site_at?: string | null;
+  team: TaskTeam;
+  report: TaskReport;
+}

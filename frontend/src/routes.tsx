@@ -15,7 +15,7 @@ import { NotFoundPage } from './features/auth/pages/NotFoundPage';
 // Coordinator pages
 import { IncidentListPage } from './features/incidents/pages/IncidentListPage';
 import { IncidentDetailPage } from './features/incidents/pages/IncidentDetailPage';
-import { DispatchPage } from './features/dispatch/pages/DispatchPage';
+import { DispatchConsolePage } from './features/dispatch/pages/DispatchConsolePage';
 import { OperationsPage } from './features/dispatch/pages/OperationsPage';
 import { CoordinatorMapPage } from './features/dispatch/pages/CoordinatorMapPage';
 import { TeamListPage } from './features/rescue/pages/TeamListPage';
@@ -69,7 +69,7 @@ export function AppRoutes() {
           <Route index element={<Navigate to="incidents" replace />} />
           <Route path="incidents" element={<IncidentListPage />} />
           <Route path="incidents/:id" element={<IncidentDetailPage />} />
-          <Route path="dispatch/:incidentId" element={<DispatchPage />} />
+          <Route path="dispatch/:incidentId" element={<DispatchConsolePage />} />
           <Route path="operations" element={<OperationsPage />} />
           <Route path="map" element={<CoordinatorMapPage />} />
           <Route path="teams" element={<TeamListPage />} />
