@@ -13,3 +13,8 @@ export { Spinner } from './Spinner';
 export { Skeleton } from './Skeleton';
 export { EmptyState } from './EmptyState';
 export { ErrorBanner } from './ErrorBanner';
+export { Stepper } from './Stepper';
+export { Timeline } from './Timeline';
+export { DataTable } from './DataTable';
+export { Pagination } from './Pagination';
+export { Tabs } from './Tabs';
