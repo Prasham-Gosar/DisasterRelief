@@ -4,7 +4,6 @@ import { useAuth } from '../../lib/auth';
 import {
   Menu,
   X,
-  Bell,
   HelpCircle,
   LogOut,
   LayoutDashboard,
@@ -15,6 +14,7 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { roleLabel } from '../../lib/format';
+import { NotificationBell } from '../../features/notifications/components/NotificationBell';
 
 export function AppShell() {
   const { user, logout } = useAuth();
@@ -65,14 +65,8 @@ export function AppShell() {
 
             {/* Right side */}
             <div className="flex items-center gap-2">
-              {/* Notification bell placeholder */}
-              <Link
-                to="/notifications"
-                className="p-2 rounded-ui text-gray-500 hover:bg-gray-100 hover:text-gray-700 focus-ring"
-                aria-label="Notifications"
-              >
-                <Bell className="h-5 w-5" />
-              </Link>
+              {/* Notification bell */}
+              <NotificationBell />
 
               {/* Help */}
               <Link
