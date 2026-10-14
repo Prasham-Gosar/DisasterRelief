@@ -5,7 +5,7 @@ import { Badge, Button, Card, EmptyState, ErrorBanner, Select, SeverityBadge, Sk
 import { INCIDENT_STATUSES, INCIDENT_TYPES, SEVERITIES } from '../../../lib/types';
 import type { IncidentStatus, IncidentType, Severity } from '../../../lib/types';
 import { incidentStatusLabel, incidentTypeLabel, severityLabel } from '../../../lib/format';
-import { errorMessage, useIncidents } from '../api';
+import { errorMessage, useIncidents, useIncidentStats } from '../api';
 import { formatAge, isOverdueForVerification } from '../labels';
 import type { IncidentFilters, IncidentListItem } from '../types';
 import { IncidentTypeIcon } from '../components/IncidentTypeIcon';
@@ -51,6 +51,7 @@ export function IncidentListPage() {
   const [now, setNow] = useState(() => Date.now());
 
   const query = useIncidents(filters, REFRESH_MS);
+  const stats = useIncidentStats(REFRESH_MS);
   const { data, isPending, isError, error, isFetching, dataUpdatedAt, refetch } = query;
 
   // wait 400 ms after the last keystroke before searching (so we do not call the API on every letter)
@@ -89,6 +90,26 @@ export function IncidentListPage() {
             <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} aria-hidden="true" /> Refresh
           </Button>
         </div>
+      </div>
+
+      {/* ───────── stat cards (click to filter) ───────── */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Summary">
+        {[
+          { label: 'Reported', value: stats.data?.by_status.reported, tone: 'text-blue-700', onClick: () => update({ status: 'reported' }) },
+          { label: 'Verified', value: stats.data?.by_status.verified, tone: 'text-purple-700', onClick: () => update({ status: 'verified' }) },
+          {
+            label: 'In progress',
+            value: stats.data?.by_status.in_progress,
+            tone: 'text-orange-700',
+            onClick: () => update({ status: 'in_progress' }),
+          },
+          { label: 'Critical open', value: stats.data?.critical_open, tone: 'text-danger-700', onClick: () => update({ severity: 'critical', status: '' }) },
+        ].map((c) => (
+          <button key={c.label} type="button" onClick={c.onClick} className="rounded-ui border border-gray-200 bg-white p-3 text-left shadow-sm hover:bg-gray-50 focus-ring sm:p-4">
+            <span className="block text-xs font-medium uppercase text-gray-500">{c.label}</span>
+            <span className={`block text-2xl font-bold ${c.tone}`}>{stats.isError ? '–' : (c.value ?? '…')}</span>
+          </button>
+        ))}
       </div>
 
       {/* ───────── filter bar ───────── */}

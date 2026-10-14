@@ -18,7 +18,12 @@ from app.schemas.incident import (
     IncidentCreated,
     IncidentDetail,
     IncidentListResponse,
+    HistoryItem,
+    NearbyItem,
     RejectRequest,
+    SubscriptionRequest,
+    TrackEdit,
+    TrackNotification,
     TrackView,
 )
 from app.services import photo_service
@@ -111,6 +116,28 @@ def track_report(tracking_ref: str, phone: str | None = Query(None), db: Session
     return IncidentService(db).track(tracking_ref, phone)
 
 
+@router.patch("/track/{tracking_ref}", response_model=TrackView)
+def edit_tracked_report(
+    tracking_ref: str, body: TrackEdit, phone: str | None = Query(None), db: Session = Depends(get_db)
+):
+    """Public. Edit location/description only while status is `reported`, else 409 REPORT_NOT_EDITABLE."""
+    return IncidentService(db).edit_report(tracking_ref, phone, body)
+
+
+@router.post("/track/{tracking_ref}/subscription", response_model=TrackView)
+def set_subscription(
+    tracking_ref: str, body: SubscriptionRequest, phone: str | None = Query(None), db: Session = Depends(get_db)
+):
+    """Public. SD opt [citizen subscribed]: turn status updates (msg 10) on or off."""
+    return IncidentService(db).set_subscription(tracking_ref, phone, body.subscribed)
+
+
+@router.get("/track/{tracking_ref}/notifications", response_model=list[TrackNotification])
+def track_notifications(tracking_ref: str, phone: str | None = Query(None), db: Session = Depends(get_db)):
+    """Public. The messages this citizen has been sent about the report."""
+    return IncidentService(db).track_notifications(tracking_ref, phone)
+
+
 # -------------------------------------------------------------- coordinator
 @router.get("", response_model=IncidentListResponse)
 def list_incidents(
@@ -154,6 +181,22 @@ def get_incident(incident_id: int, db: Session = Depends(get_db), user: User = D
     elif user.role != Role.coordinator.value:
         raise AppError("FORBIDDEN", "You are not allowed to do this")
     return IncidentService(db).detail(incident_id)
+
+
+@router.get("/{incident_id}/history", response_model=list[HistoryItem])
+def incident_history(
+    incident_id: int, db: Session = Depends(get_db), _: User = Depends(require_role(Role.coordinator))
+):
+    """Audit trail for one report (SE-5)."""
+    return IncidentService(db).history(incident_id)
+
+
+@router.get("/{incident_id}/nearby", response_model=list[NearbyItem])
+def incident_nearby(
+    incident_id: int, db: Session = Depends(get_db), _: User = Depends(require_role(Role.coordinator))
+):
+    """Similar reports within 200 m / 2 h."""
+    return IncidentService(db).nearby(incident_id)
 
 
 @router.post("/{incident_id}/verify", response_model=IncidentDetail)

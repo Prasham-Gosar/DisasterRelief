@@ -70,6 +70,7 @@ export function ReportSuccessPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
         <Link
           to={`/track?ref=${encodeURIComponent(state.tracking_ref)}`}
+          state={{ ref: state.tracking_ref, phone: state.phone }}
           className="inline-flex min-h-[44px] items-center justify-center rounded-ui bg-brand-600 px-5 font-medium text-white hover:bg-brand-700 focus-ring"
         >
           Track this report

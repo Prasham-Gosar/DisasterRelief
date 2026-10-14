@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { RefreshCw, Search } from 'lucide-react';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
+import { Bell, BellOff, Pencil, RefreshCw, Search } from 'lucide-react';
 import { Button, Card, ErrorBanner, FormField, Input, SeverityBadge, Skeleton, StatusBadge } from '../../../components/ui';
 import { formatDateTime, incidentTypeLabel } from '../../../lib/format';
 import { ApiError } from '../../../lib/api';
-import { errorMessage, useTrack } from '../api';
+import { errorMessage, useSubscription, useTrack, useTrackNotifications } from '../api';
 import { timelineActionLabel } from '../labels';
 import { normalizePhone } from '../schemas';
 import { IncidentTypeIcon } from '../components/IncidentTypeIcon';
@@ -12,11 +12,18 @@ import { StatusSteps } from '../components/StatusSteps';
 
 export function TrackPage() {
   const [params] = useSearchParams();
-  const [ref, setRef] = useState(params.get('ref') ?? '');
-  const [phone, setPhone] = useState('');
+  const location = useLocation();
+  const [ref, setRef] = useState(params.get('ref') ?? (location.state as { ref?: string } | null)?.ref ?? '');
+  // arriving from the success page: "ref" and "phone" are passed along so the person need not retype them
+  const carried = location.state as { ref?: string; phone?: string } | null;
+  const [phone, setPhone] = useState(carried?.phone ?? '');
   const [fieldError, setFieldError] = useState<string | null>(null);
   // what was actually submitted (the query only runs after the person presses "Check status")
-  const [submitted, setSubmitted] = useState<{ ref: string; phone: string } | null>(null);
+  const [submitted, setSubmitted] = useState<{ ref: string; phone: string } | null>(
+    carried?.ref && carried?.phone && normalizePhone(carried.phone)
+      ? { ref: carried.ref.toUpperCase(), phone: normalizePhone(carried.phone) as string }
+      : null,
+  );
 
   const query = useTrack(submitted?.ref ?? '', submitted?.phone ?? '', submitted !== null);
 
@@ -29,6 +36,9 @@ export function TrackPage() {
     setFieldError(null);
     setSubmitted({ ref: cleanRef, phone: cleanPhone });
   };
+
+  const notes = useTrackNotifications(submitted?.ref ?? '', submitted?.phone ?? '', !!submitted && !!query.data);
+  const subscription = useSubscription(submitted?.ref ?? '', submitted?.phone ?? '');
 
   const notFound = query.error instanceof ApiError && query.error.status === 404;
   const data = query.data;
@@ -97,6 +107,37 @@ export function TrackPage() {
             <p className="text-gray-600">{data.description}</p>
           </div>
 
+          {data.editable && submitted && (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-ui bg-gray-50 px-3 py-2 text-sm text-gray-700">
+              <span>Something changed? You can fix the address or description until a coordinator reviews it.</span>
+              <Link
+                to={`/track/${encodeURIComponent(data.tracking_ref)}/edit`}
+                state={{ phone: submitted.phone }}
+                className="inline-flex items-center gap-1 rounded font-medium text-brand-700 hover:underline focus-ring"
+              >
+                <Pencil className="h-4 w-4" aria-hidden="true" /> Edit report
+              </Link>
+            </div>
+          )}
+
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-ui border border-gray-200 px-3 py-2">
+            <div className="flex items-center gap-2 text-sm text-gray-800">
+              {data.citizen_subscribed ? <Bell className="h-4 w-4 text-brand-600" aria-hidden="true" /> : <BellOff className="h-4 w-4 text-gray-400" aria-hidden="true" />}
+              <span>{data.citizen_subscribed ? 'You will get a text when the status changes' : 'Status text messages are off'}</span>
+            </div>
+            <Button
+              variant="secondary"
+              size="sm"
+              role="switch"
+              aria-checked={data.citizen_subscribed}
+              loading={subscription.isPending}
+              onClick={() => subscription.mutate(!data.citizen_subscribed)}
+            >
+              {data.citizen_subscribed ? 'Turn off' : 'Turn on'}
+            </Button>
+          </div>
+          {subscription.isError && <ErrorBanner dismissible={false} message={errorMessage(subscription.error)} />}
+
           <div>
             <div className="mb-2 flex items-center justify-between">
               <h2 className="text-sm font-semibold text-gray-900">Updates</h2>
@@ -114,6 +155,24 @@ export function TrackPage() {
                 </li>
               ))}
             </ul>
+          </div>
+
+          <div>
+            <h2 className="mb-2 text-sm font-semibold text-gray-900">Messages we sent you</h2>
+            {notes.isPending ? (
+              <Skeleton lines={2} />
+            ) : (notes.data ?? []).length === 0 ? (
+              <p className="text-sm text-gray-500">No messages yet.</p>
+            ) : (
+              <ul className="space-y-2">
+                {(notes.data ?? []).map((n) => (
+                  <li key={n.id} className="rounded-ui bg-gray-50 px-3 py-2">
+                    <p className="text-sm text-gray-800">{n.message}</p>
+                    <p className="text-xs text-gray-500">{formatDateTime(n.created_at)}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </Card>
       )}

@@ -11,7 +11,7 @@ from app.core.errors import register_error_handlers
 
 # Person B's routers are picked up automatically once their files exist.
 _OPTIONAL_ROUTERS = ("teams", "dispatch", "team_portal")
-_A_ROUTERS = ("auth", "incidents", "notifications")
+_A_ROUTERS = ("auth", "incidents", "notifications", "stats")
 
 
 def create_app() -> FastAPI:

@@ -174,3 +174,71 @@ class TrackView(BaseModel):
     created_at: datetime
     updated_at: Optional[datetime] = None
     timeline: list[TimelineItem]
+
+
+# ------------------------------------------------------------------ A10 additions
+class HistoryItem(BaseModel):
+    """One audit row, for the coordinator's history timeline (SE-5)."""
+
+    id: int
+    actor: str
+    action: str
+    from_status: Optional[str] = None
+    to_status: Optional[str] = None
+    remark: Optional[str] = None
+    created_at: datetime
+
+
+class NearbyItem(BaseModel):
+    """A similar report close in space and time (same rule as the duplicate check)."""
+
+    id: int
+    tracking_ref: Optional[str] = None
+    incident_type: str
+    severity: str
+    status: str
+    location: str
+    distance_m: int
+    minutes_apart: int
+    created_at: datetime
+
+
+class TrackEdit(BaseModel):
+    """Citizen edit: location and description only, and only while status is `reported`."""
+
+    location: Optional[str] = Field(default=None, min_length=3, max_length=255)
+    description: Optional[str] = Field(default=None, min_length=5, max_length=1000)
+    latitude: Optional[float] = Field(default=None, ge=-90, le=90)
+    longitude: Optional[float] = Field(default=None, ge=-180, le=180)
+
+    @field_validator("location", "description")
+    @classmethod
+    def _strip(cls, v):
+        return v.strip() if isinstance(v, str) else v
+
+    @model_validator(mode="after")
+    def _something_to_change(self):
+        if self.location is None and self.description is None and self.latitude is None and self.longitude is None:
+            raise ValueError("Send at least one of location, description or latitude/longitude")
+        if (self.latitude is None) != (self.longitude is None):
+            raise ValueError("latitude and longitude must be given together")
+        return self
+
+
+class SubscriptionRequest(BaseModel):
+    subscribed: bool
+
+
+class TrackNotification(BaseModel):
+    id: int
+    message: str
+    alert_type: str
+    channel: str
+    created_at: datetime
+
+
+class IncidentStats(BaseModel):
+    total: int
+    by_status: dict[str, int]
+    by_severity: dict[str, int]
+    critical_open: int

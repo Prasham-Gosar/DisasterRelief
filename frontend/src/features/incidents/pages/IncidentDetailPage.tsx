@@ -2,12 +2,13 @@ import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, Lock, Phone, Send, XCircle, Copy as DuplicateIcon } from 'lucide-react';
 import {
-  Badge, Button, Card, CardHeader, ConfirmDialog, EmptyState, ErrorBanner, Modal, SeverityBadge, Skeleton, StatusBadge, useToast,
+  Badge, Button, Card, CardHeader, ConfirmDialog, EmptyState, ErrorBanner, Modal, SeverityBadge, Skeleton, StatusBadge, Timeline, useToast,
 } from '../../../components/ui';
 import { MapView } from '../../../components/map/MapView';
 import { ApiError } from '../../../lib/api';
 import { formatDateTime, incidentStatusLabel, incidentTypeLabel } from '../../../lib/format';
-import { errorMessage, useClose, useIncident, useReject, useVerify } from '../api';
+import { errorMessage, useClose, useHistory, useIncident, useNearby, useReject, useVerify } from '../api';
+import { timelineActionLabel } from '../labels';
 import { formatAge, SEVERITY_HEX, TYPE_SPECIFIC_LABELS } from '../labels';
 import { IncidentTypeIcon } from '../components/IncidentTypeIcon';
 import { RejectModal } from '../components/RejectModal';
@@ -33,6 +34,8 @@ export function IncidentDetailPage() {
   const verify = useVerify(incidentId);
   const reject = useReject(incidentId);
   const close = useClose(incidentId);
+  const nearby = useNearby(incidentId);
+  const history = useHistory(incidentId);
 
   const [rejectOpen, setRejectOpen] = useState(false);
   const [closeOpen, setCloseOpen] = useState(false);
@@ -192,6 +195,55 @@ export function IncidentDetailPage() {
                 </dd>
               </div>
             </dl>
+          </Card>
+
+          <Card>
+            <CardHeader title="Similar reports nearby" description="Same type, within 200 m and 2 hours" />
+            {nearby.isPending ? (
+              <Skeleton lines={2} />
+            ) : nearby.isError ? (
+              <p className="text-sm text-danger-700">Could not load nearby reports.</p>
+            ) : (nearby.data ?? []).length === 0 ? (
+              <p className="text-sm text-gray-500">No similar reports nearby.</p>
+            ) : (
+              <ul className="divide-y divide-gray-100">
+                {(nearby.data ?? []).map((n) => (
+                  <li key={n.id}>
+                    <Link to={`/coordinator/incidents/${n.id}`} className="flex flex-wrap items-center justify-between gap-2 rounded py-2 hover:bg-gray-50 focus-ring">
+                      <span className="min-w-0">
+                        <span className="block text-sm font-medium text-gray-900">{n.tracking_ref ?? `#${n.id}`} · {n.location}</span>
+                        <span className="block text-xs text-gray-500">{n.distance_m} m away · {formatAge(n.minutes_apart)} apart</span>
+                      </span>
+                      <span className="flex items-center gap-1.5"><SeverityBadge severity={n.severity} /><StatusBadge type="incident" status={n.status} /></span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+
+          <Card>
+            <CardHeader title="History" description="Who did what, and when" />
+            {history.isPending ? (
+              <Skeleton lines={3} />
+            ) : history.isError ? (
+              <p className="text-sm text-danger-700">Could not load the history.</p>
+            ) : (
+              <Timeline
+                items={(history.data ?? []).map((h, i, all) => ({
+                  id: h.id,
+                  title: timelineActionLabel(h.action),
+                  time: formatDateTime(h.created_at),
+                  status: i === all.length - 1 ? 'current' : 'done',
+                  detail: (
+                    <>
+                      <span className="text-xs text-gray-500">by {h.actor}</span>
+                      {h.remark && <p>{h.remark}</p>}
+                    </>
+                  ),
+                }))}
+              />
+            )}
           </Card>
         </div>
 
