@@ -5,8 +5,13 @@ import type {
   IncidentCreated,
   IncidentDetail,
   IncidentFilters,
+  HistoryItem,
   IncidentListItem,
+  IncidentStats,
+  NearbyItem,
   ReportPayload,
+  TrackEditPayload,
+  TrackNotification,
   TrackView,
 } from './types';
 
@@ -15,6 +20,10 @@ export const incidentKeys = {
   list: (filters: IncidentFilters) => ['incidents', 'list', filters] as const,
   detail: (id: number) => ['incidents', 'detail', id] as const,
   track: (ref: string, phone: string) => ['incidents', 'track', ref, phone] as const,
+  trackNotes: (ref: string, phone: string) => ['incidents', 'track-notifications', ref, phone] as const,
+  history: (id: number) => ['incidents', 'history', id] as const,
+  nearby: (id: number) => ['incidents', 'nearby', id] as const,
+  stats: ['incidents', 'stats'] as const,
 };
 
 /** Turn any error into a sentence a person can understand */
@@ -27,6 +36,7 @@ export function errorMessage(err: unknown): string {
     }
     if (err.code === 'INVALID_TRANSITION') return 'This report was just updated by someone else. The page has been refreshed.';
     if (err.code === 'REMARK_REQUIRED') return 'Please write a short reason (at least 5 characters).';
+    if (err.code === 'REPORT_NOT_EDITABLE') return 'This report has already been reviewed, so it can no longer be edited. If something urgent changed, call 112.';
     if (err.code === 'FORBIDDEN') return 'You do not have permission to do that.';
     if (err.code === 'INTERNAL_ERROR') return 'Something went wrong on our side. Please try again in a moment.';
     return err.message;
@@ -104,6 +114,8 @@ function useIncidentAction<TVars>(id: number, call: (vars: TVars) => Promise<Inc
     onSuccess: (updated) => {
       qc.setQueryData(incidentKeys.detail(id), updated);
       void qc.invalidateQueries({ queryKey: ['incidents', 'list'] });
+      void qc.invalidateQueries({ queryKey: incidentKeys.history(id) });
+      void qc.invalidateQueries({ queryKey: incidentKeys.stats });
     },
     onError: () => {
       // e.g. 409 INVALID_TRANSITION: someone else changed it, so reload the truth
@@ -127,4 +139,63 @@ export function useReject(id: number) {
 
 export function useClose(id: number) {
   return useIncidentAction<void>(id, async () => (await api.post<IncidentDetail>(`/api/incidents/${id}/close`, {})).data);
+}
+
+// ─────────────────────────── A10/A11 additions ───────────────────────────
+
+/** Messages the citizen has been sent about this report */
+export function useTrackNotifications(ref: string, phone: string, enabled: boolean) {
+  return useQuery({
+    queryKey: incidentKeys.trackNotes(ref, phone),
+    queryFn: async () =>
+      (await api.get<TrackNotification[]>(`/api/incidents/track/${encodeURIComponent(ref)}/notifications`, { params: { phone } })).data,
+    enabled,
+    retry: false,
+    refetchInterval: 15_000,
+  });
+}
+
+/** SD opt [citizen subscribed]: turn status updates on or off */
+export function useSubscription(ref: string, phone: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (subscribed: boolean) =>
+      (await api.post<TrackView>(`/api/incidents/track/${encodeURIComponent(ref)}/subscription`, { subscribed }, { params: { phone } })).data,
+    onSuccess: (view) => qc.setQueryData(incidentKeys.track(ref, phone), view),
+  });
+}
+
+/** Citizen edit (only while "reported"; otherwise 409 REPORT_NOT_EDITABLE) */
+export function useEditReport(ref: string, phone: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: TrackEditPayload) =>
+      (await api.patch<TrackView>(`/api/incidents/track/${encodeURIComponent(ref)}`, payload, { params: { phone } })).data,
+    onSuccess: (view) => qc.setQueryData(incidentKeys.track(ref, phone), view),
+    onError: () => void qc.invalidateQueries({ queryKey: incidentKeys.track(ref, phone) }), // status may have moved on
+  });
+}
+
+export function useHistory(id: number) {
+  return useQuery({
+    queryKey: incidentKeys.history(id),
+    queryFn: async () => (await api.get<HistoryItem[]>(`/api/incidents/${id}/history`)).data,
+    enabled: Number.isFinite(id),
+  });
+}
+
+export function useNearby(id: number) {
+  return useQuery({
+    queryKey: incidentKeys.nearby(id),
+    queryFn: async () => (await api.get<NearbyItem[]>(`/api/incidents/${id}/nearby`)).data,
+    enabled: Number.isFinite(id),
+  });
+}
+
+export function useIncidentStats(refetchInterval?: number) {
+  return useQuery({
+    queryKey: incidentKeys.stats,
+    queryFn: async () => (await api.get<IncidentStats>('/api/stats/incidents')).data,
+    refetchInterval,
+  });
 }

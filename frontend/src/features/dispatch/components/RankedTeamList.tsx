@@ -90,6 +90,7 @@ export function RankedTeamList({
                       type="checkbox"
                       checked={isSelected}
                       disabled={disabled}
+                      onClick={(e) => e.stopPropagation()} // the card's own onClick would toggle a second time
                       onChange={() => !disabled && onToggleSelect(team.team_id)}
                       className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500 cursor-pointer disabled:cursor-not-allowed"
                       aria-label={`Select ${team.name}`}

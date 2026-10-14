@@ -93,3 +93,52 @@ export interface IncidentFilters {
 export interface ReportSuccessState extends IncidentCreated {
   phone: string;
 }
+
+/** GET /api/incidents/{id}/history (audit trail) */
+export interface HistoryItem {
+  id: number;
+  actor: string;
+  action: string;
+  from_status: IncidentStatus | null;
+  to_status: IncidentStatus | null;
+  remark: string | null;
+  created_at: string;
+}
+
+/** GET /api/incidents/{id}/nearby */
+export interface NearbyItem {
+  id: number;
+  tracking_ref: string | null;
+  incident_type: IncidentType;
+  severity: Severity;
+  status: IncidentStatus;
+  location: string;
+  distance_m: number;
+  minutes_apart: number;
+  created_at: string;
+}
+
+/** GET /api/incidents/track/{ref}/notifications */
+export interface TrackNotification {
+  id: number;
+  message: string;
+  alert_type: string;
+  channel: string;
+  created_at: string;
+}
+
+/** GET /api/stats/incidents */
+export interface IncidentStats {
+  total: number;
+  by_status: Record<IncidentStatus, number>;
+  by_severity: Record<Severity, number>;
+  critical_open: number;
+}
+
+/** PATCH /api/incidents/track/{ref}: only these can change, and only while "reported" */
+export interface TrackEditPayload {
+  location?: string;
+  description?: string;
+  latitude?: number;
+  longitude?: number;
+}
