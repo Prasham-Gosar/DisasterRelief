@@ -82,7 +82,6 @@ export function ResolveTaskModal({
             hasError={Boolean(validationError ?? serverError)}
             disabled={loading}
             className="w-full"
-            autoFocus
           />
 
           <div className="flex items-center justify-between mt-1 text-xs text-gray-500">

@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import './fixLeafletIcons';
@@ -11,6 +11,8 @@ export interface MapMarker {
   color?: string;
   label?: string;
   popup?: string;
+  customPopup?: ReactNode;
+  customIcon?: L.DivIcon | L.Icon;
 }
 
 interface MapViewProps {
@@ -18,6 +20,7 @@ interface MapViewProps {
   center?: [number, number];
   zoom?: number;
   fitBounds?: boolean;
+  fitBoundsOnce?: boolean;
   onMarkerClick?: (marker: MapMarker) => void;
   className?: string;
 }
@@ -39,14 +42,23 @@ function createColorIcon(color: string): L.DivIcon {
   });
 }
 
-function FitBoundsComponent({ markers }: { markers: MapMarker[] }) {
+function FitBoundsComponent({
+  markers,
+  fitBoundsOnce = false,
+}: {
+  markers: MapMarker[];
+  fitBoundsOnce?: boolean;
+}) {
   const map = useMap();
+  const hasFittedRef = useRef(false);
 
   useEffect(() => {
     if (markers.length === 0) return;
+    if (fitBoundsOnce && hasFittedRef.current) return;
     const bounds = L.latLngBounds(markers.map((m) => [m.lat, m.lng]));
     map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
-  }, [markers, map]);
+    hasFittedRef.current = true;
+  }, [markers, map, fitBoundsOnce]);
 
   return null;
 }
@@ -56,13 +68,16 @@ export function MapView({
   center = DEFAULT_CENTER,
   zoom = DEFAULT_ZOOM,
   fitBounds = false,
+  fitBoundsOnce = false,
   onMarkerClick,
   className = '',
 }: MapViewProps) {
   const defaultIcon = useMemo(() => new L.Icon.Default(), []);
 
   return (
-    <div className={`h-[400px] md:h-[500px] rounded-ui overflow-hidden border border-gray-200 ${className}`}>
+    <div
+      className={`h-[400px] md:h-[500px] rounded-ui overflow-hidden border border-gray-200 ${className}`}
+    >
       <MapContainer
         center={center}
         zoom={zoom}
@@ -74,23 +89,31 @@ export function MapView({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        {fitBounds && markers.length > 0 && <FitBoundsComponent markers={markers} />}
+        {(fitBounds || fitBoundsOnce) && markers.length > 0 && (
+          <FitBoundsComponent markers={markers} fitBoundsOnce={fitBoundsOnce} />
+        )}
 
         {markers.map((marker) => (
           <Marker
             key={marker.id}
             position={[marker.lat, marker.lng]}
-            icon={marker.color ? createColorIcon(marker.color) : defaultIcon}
+            icon={marker.customIcon ?? (marker.color ? createColorIcon(marker.color) : defaultIcon)}
             eventHandlers={
               onMarkerClick
                 ? { click: () => onMarkerClick(marker) }
                 : undefined
             }
           >
-            {(marker.popup || marker.label) && (
+            {(marker.customPopup || marker.popup || marker.label) && (
               <Popup>
-                {marker.label && <strong>{marker.label}</strong>}
-                {marker.popup && <p className="mt-1 text-sm">{marker.popup}</p>}
+                {marker.customPopup ? (
+                  marker.customPopup
+                ) : (
+                  <>
+                    {marker.label && <strong>{marker.label}</strong>}
+                    {marker.popup && <p className="mt-1 text-sm">{marker.popup}</p>}
+                  </>
+                )}
               </Popup>
             )}
           </Marker>

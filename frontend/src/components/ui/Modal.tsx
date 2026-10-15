@@ -14,13 +14,16 @@ export function Modal({ open, onClose, title, children, footer }: ModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
   // Focus trap + Esc
   useEffect(() => {
     if (!open) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (e.key !== 'Tab') return;
@@ -60,7 +63,7 @@ export function Modal({ open, onClose, title, children, footer }: ModalProps) {
       document.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = '';
     };
-  }, [open, onClose]);
+  }, [open]);
 
   const handleOverlayClick = useCallback(
     (e: React.MouseEvent) => {

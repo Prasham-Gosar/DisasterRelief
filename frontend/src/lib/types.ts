@@ -136,7 +136,124 @@ export interface AssignResponse {
   report_id: number;
   report_status: string;
   assignments: AssignmentResult[];
+  replaced_assignment_id?: number | null;
 }
+
+export interface ReassignPayload {
+  from_team_id: number;
+  to_team_id?: number | null;
+  reason: string;
+}
+
+export interface DispatchAssignmentTeam {
+  id: number;
+  name: string;
+  team_type: TeamType;
+}
+
+export interface DispatchAssignmentReport {
+  id: number;
+  tracking_ref?: string | null;
+  incident_type: IncidentType;
+  severity: Severity;
+  status: IncidentStatus;
+  location: string;
+  latitude?: number | null;
+  longitude?: number | null;
+}
+
+export interface DispatchAssignment {
+  assignment_id: number;
+  status: AssignmentStatus;
+  assigned_at: string;
+  en_route_at?: string | null;
+  on_site_at?: string | null;
+  resolved_at?: string | null;
+  elapsed_minutes: number;
+  overdue: boolean;
+  overdue_minutes: number;
+  team: DispatchAssignmentTeam;
+  report: DispatchAssignmentReport;
+}
+
+export interface DispatchAssignmentsResponse {
+  items: DispatchAssignment[];
+  total: number;
+}
+
+export interface DispatchSettings {
+  overdue_minutes: number;
+}
+
+export interface DispatchMapIncident {
+  id: number;
+  tracking_ref?: string | null;
+  incident_type: IncidentType;
+  severity: Severity;
+  status: IncidentStatus;
+  latitude: number;
+  longitude: number;
+  location: string;
+}
+
+export interface DispatchMapTeam {
+  id: number;
+  name: string;
+  team_type: TeamType;
+  status: TeamStatus;
+  latitude?: number | null;
+  longitude?: number | null;
+  last_location_at?: string | null;
+}
+
+export interface DispatchMapResponse {
+  incidents: DispatchMapIncident[];
+  teams: DispatchMapTeam[];
+}
+
+// ── Team Models ──
+
+export interface TeamMemberOut {
+  id: number;
+  name?: string | null;
+  public_code?: string | null;
+  member_status?: MemberStatus | null;
+}
+
+export interface TeamAssignmentHistory {
+  assignment_id: number;
+  tracking_ref?: string | null;
+  report_tracking_ref?: string | null;
+  status: AssignmentStatus | string;
+  assigned_at?: string | null;
+  resolved_at?: string | null;
+  reassign_reason?: string | null;
+}
+
+export interface TeamListItem {
+  id: number;
+  public_code?: string | null;
+  name: string;
+  team_type: TeamType;
+  status: TeamStatus;
+  latitude?: number | null;
+  longitude?: number | null;
+  member_count: number;
+  current_report_id?: number | null;
+}
+
+export interface TeamListResponse {
+  items: TeamListItem[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface TeamDetail extends TeamListItem {
+  members: TeamMemberOut[];
+  assignments: TeamAssignmentHistory[];
+}
+
 
 // ── Notification Models ──
 
