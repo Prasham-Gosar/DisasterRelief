@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { X, HelpCircle } from 'lucide-react';
 import { useAuth } from '../../lib/auth';
 import { roleLabel } from '../../lib/format';
@@ -74,11 +75,11 @@ export function HelpDrawer({ open, onClose }: HelpDrawerProps) {
   const isCoordinator = role === 'coordinator' || role === 'system_administrator';
   const isRescueMember = role === 'rescue_team_member';
 
-  return (
+  const drawerContent = (
     <div
       ref={overlayRef}
       onClick={handleOverlayClick}
-      className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex justify-end animate-in fade-in"
+      className="fixed inset-0 z-[9999] bg-black/40 backdrop-blur-sm flex justify-end animate-in fade-in"
       role="dialog"
       aria-modal="true"
       aria-label="Help and instructions"
@@ -188,4 +189,8 @@ export function HelpDrawer({ open, onClose }: HelpDrawerProps) {
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined'
+    ? createPortal(drawerContent, document.body)
+    : drawerContent;
 }

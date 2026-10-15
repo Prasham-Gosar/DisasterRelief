@@ -76,7 +76,7 @@ export function MapView({
 
   return (
     <div
-      className={`h-[400px] md:h-[500px] rounded-ui overflow-hidden border border-gray-200 ${className}`}
+      className={`relative z-0 isolate h-[400px] md:h-[500px] rounded-ui overflow-hidden border border-gray-200 ${className}`}
     >
       <MapContainer
         center={center}

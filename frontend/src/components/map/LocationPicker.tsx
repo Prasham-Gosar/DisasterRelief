@@ -98,7 +98,7 @@ export function LocationPicker({ value, onChange, className = '' }: LocationPick
 
       <p className="text-xs text-gray-500">Click on the map to place or move the pin.</p>
 
-      <div className="h-[300px] md:h-[400px] rounded-ui overflow-hidden border border-gray-200">
+      <div className="relative z-0 isolate h-[300px] md:h-[400px] rounded-ui overflow-hidden border border-gray-200">
         <MapContainer
           center={value ? [value.lat, value.lng] : DEFAULT_CENTER}
           zoom={value ? 15 : DEFAULT_ZOOM}
