@@ -16,10 +16,10 @@ import { NotFoundPage } from './features/auth/pages/NotFoundPage';
 import { IncidentListPage } from './features/incidents/pages/IncidentListPage';
 import { IncidentDetailPage } from './features/incidents/pages/IncidentDetailPage';
 import { DispatchConsolePage } from './features/dispatch/pages/DispatchConsolePage';
-import { OperationsPage } from './features/dispatch/pages/OperationsPage';
-import { CoordinatorMapPage } from './features/dispatch/pages/CoordinatorMapPage';
-import { TeamListPage } from './features/rescue/pages/TeamListPage';
-import { TeamDetailPage } from './features/rescue/pages/TeamDetailPage';
+import { OperationsBoardPage } from './features/dispatch/pages/OperationsBoardPage';
+import { OperationsMapPage } from './features/dispatch/pages/OperationsMapPage';
+import { TeamsPage } from './features/dispatch/pages/TeamsPage';
+import { TeamDetailPage } from './features/dispatch/pages/TeamDetailPage';
 
 // Rescue Team pages
 import { RescueTeamDashboard } from './features/rescue/pages/RescueTeamDashboard';
@@ -70,9 +70,9 @@ export function AppRoutes() {
           <Route path="incidents" element={<IncidentListPage />} />
           <Route path="incidents/:id" element={<IncidentDetailPage />} />
           <Route path="dispatch/:incidentId" element={<DispatchConsolePage />} />
-          <Route path="operations" element={<OperationsPage />} />
-          <Route path="map" element={<CoordinatorMapPage />} />
-          <Route path="teams" element={<TeamListPage />} />
+          <Route path="operations" element={<OperationsBoardPage />} />
+          <Route path="map" element={<OperationsMapPage />} />
+          <Route path="teams" element={<TeamsPage />} />
           <Route path="teams/:id" element={<TeamDetailPage />} />
         </Route>
 

@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel
 
@@ -7,6 +8,16 @@ class TeamMemberOut(BaseModel):
     name: Optional[str] = None
     public_code: Optional[str] = None
     member_status: Optional[str] = None
+
+
+class TeamAssignmentHistory(BaseModel):
+    assignment_id: int
+    tracking_ref: Optional[str] = None
+    report_tracking_ref: Optional[str] = None
+    status: str
+    assigned_at: Optional[datetime] = None
+    resolved_at: Optional[datetime] = None
+    reassign_reason: Optional[str] = None
 
 
 class TeamListItem(BaseModel):
@@ -30,3 +41,4 @@ class TeamListResponse(BaseModel):
 
 class TeamDetail(TeamListItem):
     members: list[TeamMemberOut] = []
+    assignments: list[TeamAssignmentHistory] = []

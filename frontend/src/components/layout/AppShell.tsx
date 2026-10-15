@@ -15,12 +15,14 @@ import {
 } from 'lucide-react';
 import { roleLabel } from '../../lib/format';
 import { NotificationBell } from '../../features/notifications/components/NotificationBell';
+import { HelpDrawer } from './HelpDrawer';
 
 export function AppShell() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [helpDrawerOpen, setHelpDrawerOpen] = useState(false);
 
   const navLinks = getNavLinks(user?.role);
 
@@ -68,14 +70,15 @@ export function AppShell() {
               {/* Notification bell */}
               <NotificationBell />
 
-              {/* Help */}
-              <Link
-                to="#"
+              {/* Help Button (Desktop) */}
+              <button
+                type="button"
+                onClick={() => setHelpDrawerOpen(true)}
                 className="hidden sm:flex p-2 rounded-ui text-gray-500 hover:bg-gray-100 hover:text-gray-700 focus-ring"
-                aria-label="Help"
+                aria-label="Help and instructions"
               >
                 <HelpCircle className="h-5 w-5" />
-              </Link>
+              </button>
 
               {/* User menu */}
               <div className="relative">
@@ -107,14 +110,17 @@ export function AppShell() {
                           {user?.role ? roleLabel(user.role) : ''}
                         </p>
                       </div>
-                      <Link
-                        to="#"
-                        className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 focus-ring sm:hidden"
-                        onClick={() => setUserMenuOpen(false)}
+                      <button
+                        type="button"
+                        className="flex items-center gap-2 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 focus-ring sm:hidden"
+                        onClick={() => {
+                          setUserMenuOpen(false);
+                          setHelpDrawerOpen(true);
+                        }}
                       >
                         <HelpCircle className="h-4 w-4" />
                         Help
-                      </Link>
+                      </button>
                       <button
                         onClick={() => {
                           setUserMenuOpen(false);
@@ -171,6 +177,12 @@ export function AppShell() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <Outlet />
       </main>
+
+      {/* Help Drawer */}
+      <HelpDrawer
+        open={helpDrawerOpen}
+        onClose={() => setHelpDrawerOpen(false)}
+      />
     </div>
   );
 }
@@ -182,7 +194,7 @@ interface NavLink {
 }
 
 function getNavLinks(role: string | undefined): NavLink[] {
-  if (role === 'coordinator') {
+  if (role === 'coordinator' || role === 'system_administrator') {
     return [
       { to: '/coordinator/incidents', label: 'Incidents', icon: AlertTriangle },
       { to: '/coordinator/operations', label: 'Operations', icon: Radio },

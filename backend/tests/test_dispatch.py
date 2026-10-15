@@ -369,6 +369,8 @@ def test_teams_endpoints(client, coord_headers, seeded_teams):
     detail = r_detail.json()
     assert "members" in detail
     assert len(detail["members"]) > 0
+    assert "assignments" in detail
+    assert isinstance(detail["assignments"], list)
 
 
 # -----------------------------------------------------------------------------
@@ -386,3 +388,54 @@ def test_update_location(client, rescue_member_headers, db):
     team = db.scalar(select(RescueTeam).where(RescueTeam.name == "Fire Team Alpha"))
     assert team.latitude == 19.1234
     assert team.longitude == 72.8567
+
+
+# -----------------------------------------------------------------------------
+# BR-2: Concurrent assignment of the same team using two threads/sessions
+# -----------------------------------------------------------------------------
+@pytest.mark.skipif(
+    "postgresql" not in getattr(__import__("app.core.config", fromlist=["settings"]).settings, "DATABASE_URL", ""),
+    reason="BR-2 concurrency test requires PostgreSQL row-level locking (FOR UPDATE)",
+)
+def test_concurrent_team_assignment(verified_report, seeded_teams, make_report):
+    import concurrent.futures
+    from app.core.database import SessionLocal
+    from app.core.errors import AppError
+    from app.models.user import Coordinator
+    from app.services.dispatch_service import DispatchService
+
+    rep2_id = make_report(latitude=19.2)["report_id"]
+    with SessionLocal() as s:
+        c = s.scalar(select(Coordinator).where(Coordinator.is_active.is_(True)))
+        r2 = s.get(IncidentReport, rep2_id)
+        r2.verify(c)
+        s.commit()
+
+        team = s.scalar(select(RescueTeam).where(RescueTeam.status == TeamStatus.available.value))
+        target_team_id = team.id
+
+    results = []
+
+    def run_assign(report_id):
+        with SessionLocal() as session:
+            coord = session.scalar(select(Coordinator).where(Coordinator.is_active.is_(True)))
+            service = DispatchService(session)
+            try:
+                res = service.assign_team(coord, report_id, team_ids=[target_team_id])
+                results.append(("SUCCESS", res))
+            except AppError as e:
+                results.append(("ERROR", e.code))
+            except Exception as e:
+                results.append(("CRASH", str(e)))
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+        f1 = executor.submit(run_assign, verified_report)
+        f2 = executor.submit(run_assign, rep2_id)
+        f1.result()
+        f2.result()
+
+    successes = [r for r in results if r[0] == "SUCCESS"]
+    team_not_avail = [r for r in results if r[0] == "ERROR" and r[1] == "TEAM_NOT_AVAILABLE"]
+
+    assert len(successes) == 1
+    assert len(team_not_avail) == 1

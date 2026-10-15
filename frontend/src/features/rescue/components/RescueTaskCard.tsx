@@ -1,6 +1,6 @@
-import { ExternalLink, Phone, Navigation, CheckCircle2, MapPin, Flame, Droplets, Stethoscope, AlertTriangle } from 'lucide-react';
-import type { RescueTask, IncidentType } from '../../../lib/types';
-import { Card, Button, Stepper, SeverityBadge } from '../../../components/ui';
+import { ExternalLink, Phone, Navigation, CheckCircle2, MapPin, Flame, Droplets, Stethoscope, AlertTriangle, RefreshCw } from 'lucide-react';
+import type { RescueTask, IncidentType, AssignmentStatus } from '../../../lib/types';
+import { Card, Button, Stepper, SeverityBadge, StatusBadge } from '../../../components/ui';
 import { MapView, type MapMarker } from '../../../components/map/MapView';
 import { incidentTypeLabel } from '../../../lib/format';
 
@@ -36,15 +36,29 @@ function getStepIndex(status: string): number {
 
 interface RescueTaskCardProps {
   task: RescueTask;
+  effectiveStatus?: AssignmentStatus | string;
+  hasPendingSync?: boolean;
   onUpdateStatus: (nextStatus: 'en_route' | 'on_site' | 'resolved') => void;
   isLoading: boolean;
 }
 
-export function RescueTaskCard({ task, onUpdateStatus, isLoading }: RescueTaskCardProps) {
-  const { report, status } = task;
-  const currentStep = getStepIndex(status);
+export function RescueTaskCard({
+  task,
+  effectiveStatus,
+  hasPendingSync = false,
+  onUpdateStatus,
+  isLoading,
+}: RescueTaskCardProps) {
+  const { report } = task;
+  const currentStatus = effectiveStatus ?? task.status;
+  const currentStep = getStepIndex(currentStatus);
 
-  const hasCoords = report.latitude !== null && report.latitude !== undefined && report.longitude !== null && report.longitude !== undefined;
+  const hasCoords =
+    report.latitude !== null &&
+    report.latitude !== undefined &&
+    report.longitude !== null &&
+    report.longitude !== undefined;
+
   const mapMarkers: MapMarker[] = hasCoords
     ? [
         {
@@ -80,7 +94,21 @@ export function RescueTaskCard({ task, onUpdateStatus, isLoading }: RescueTaskCa
               </h2>
             </div>
           </div>
-          <SeverityBadge severity={report.severity} />
+          <div className="flex items-center gap-1.5 flex-wrap justify-end">
+            {hasPendingSync && (
+              <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-semibold bg-amber-50 text-amber-700 border border-amber-200 animate-pulse">
+                <RefreshCw className="w-3 h-3 animate-spin" />
+                Pending sync
+              </span>
+            )}
+            <SeverityBadge severity={report.severity} />
+          </div>
+        </div>
+
+        {/* Current status indicator */}
+        <div className="flex items-center gap-2 mt-2">
+          <span className="text-xs text-gray-500">Current Phase:</span>
+          <StatusBadge type="assignment" status={currentStatus as AssignmentStatus} />
         </div>
 
         {/* Stepper Progress */}
@@ -147,9 +175,9 @@ export function RescueTaskCard({ task, onUpdateStatus, isLoading }: RescueTaskCa
         </div>
       )}
 
-      {/* Action Buttons (Min height 56px / h-14) */}
+      {/* Action Buttons (Touch target >= 56px: min-h-[56px] h-14) */}
       <div className="pt-2">
-        {status === 'assigned' && (
+        {currentStatus === 'assigned' && (
           <Button
             variant="primary"
             size="lg"
@@ -162,7 +190,7 @@ export function RescueTaskCard({ task, onUpdateStatus, isLoading }: RescueTaskCa
           </Button>
         )}
 
-        {status === 'en_route' && (
+        {currentStatus === 'en_route' && (
           <Button
             variant="primary"
             size="lg"
@@ -175,7 +203,7 @@ export function RescueTaskCard({ task, onUpdateStatus, isLoading }: RescueTaskCa
           </Button>
         )}
 
-        {status === 'on_site' && (
+        {currentStatus === 'on_site' && (
           <Button
             variant="primary"
             size="lg"
@@ -188,9 +216,13 @@ export function RescueTaskCard({ task, onUpdateStatus, isLoading }: RescueTaskCa
           </Button>
         )}
 
-        {status === 'resolved' && (
+        {currentStatus === 'resolved' && (
           <div className="p-4 bg-green-50 border border-green-200 rounded-ui text-center text-sm font-semibold text-green-800">
-            Task completed successfully
+            {hasPendingSync ? (
+              <span>Resolved (Offline update queued for sync)</span>
+            ) : (
+              <span>Task completed successfully</span>
+            )}
           </div>
         )}
       </div>

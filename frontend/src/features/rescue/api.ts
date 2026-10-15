@@ -8,12 +8,14 @@ export async function fetchMyTask(): Promise<RescueTask | null> {
 
 export async function updateTaskStatus(
   assignmentId: number,
-  status: 'en_route' | 'on_site' | 'resolved',
+  status: 'en_route' | 'on_site' | 'resolved' | string,
   closingNote?: string | null,
+  clientUpdateId?: string | null,
 ): Promise<RescueTask> {
   const { data } = await api.post<RescueTask>(`/api/team/tasks/${assignmentId}/status`, {
     status,
     closing_note: closingNote ?? null,
+    client_update_id: clientUpdateId ?? null,
   });
   return data;
 }

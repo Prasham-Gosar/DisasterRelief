@@ -34,6 +34,7 @@ class MyTaskResponse(BaseModel):
 class UpdateTaskStatusRequest(BaseModel):
     status: str
     closing_note: Optional[str] = None
+    client_update_id: Optional[str] = None
 
 
 class UpdateLocationRequest(BaseModel):

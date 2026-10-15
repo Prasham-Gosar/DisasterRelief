@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Wifi, WifiOff, MapPin, Radio, Shield, CheckCircle2, Clock } from 'lucide-react';
 import { fetchMyTask, updateTaskStatus, updateTeamLocation } from '../api';
@@ -8,6 +8,7 @@ import { RescueTaskCard } from '../components/RescueTaskCard';
 import { ResolveTaskModal } from '../components/ResolveTaskModal';
 import { Card, Spinner, ErrorBanner, Button, useToast } from '../../../components/ui';
 import { ApiError } from '../../../lib/api';
+import { enqueue, listQueue, flushQueue, type QueueItem } from '../../../lib/offlineQueue';
 
 export function RescueTeamDashboard() {
   const { user } = useAuth();
@@ -16,16 +17,7 @@ export function RescueTeamDashboard() {
 
   // Online / offline state
   const [isOnline, setIsOnline] = useState(navigator.onLine);
-  useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
+  const [queueItems, setQueueItems] = useState<QueueItem[]>(() => listQueue());
 
   // Modal state
   const [resolveModalOpen, setResolveModalOpen] = useState(false);
@@ -44,8 +36,56 @@ export function RescueTeamDashboard() {
   } = useQuery({
     queryKey: rescueKeys.myTask(),
     queryFn: fetchMyTask,
-    refetchInterval: 10_000,
+    refetchInterval: isOnline ? 10_000 : false,
   });
+
+  // Compute effective status from server task + local pending offline queue
+  const taskQueue = queueItems.filter((q) => q.assignment_id === task?.assignment_id);
+  const pendingStatus = taskQueue.length > 0 ? taskQueue[taskQueue.length - 1].status : null;
+  const effectiveStatus = pendingStatus ?? task?.status;
+  const hasPendingSync = taskQueue.length > 0;
+
+  // Flush handler
+  const triggerFlush = useCallback(async () => {
+    if (listQueue().length === 0) return;
+    try {
+      const result = await flushQueue();
+      setQueueItems(listQueue());
+      if (result.processed > 0) {
+        toast('success', `Synced ${result.processed} update(s) to server`);
+        queryClient.invalidateQueries({ queryKey: rescueKeys.all });
+      }
+    } catch (err) {
+      console.warn('[RescueTeamDashboard] Flush error:', err);
+    }
+  }, [queryClient, toast]);
+
+  // Online/offline listeners
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      triggerFlush();
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [triggerFlush]);
+
+  // Flush every 15s while queue is non-empty
+  useEffect(() => {
+    if (queueItems.length === 0) return;
+    const interval = setInterval(() => {
+      triggerFlush();
+    }, 15_000);
+    return () => clearInterval(interval);
+  }, [queueItems.length, triggerFlush]);
 
   // Location tracking state
   const [locationStatus, setLocationStatus] = useState<
@@ -55,8 +95,8 @@ export function RescueTeamDashboard() {
 
   // Location tracking effect while task is active
   useEffect(() => {
-    if (!task || task.status === 'resolved' || !navigator.geolocation) {
-      setLocationStatus('idle');
+    if (!task || task.status === 'resolved' || !navigator.geolocation || !isOnline) {
+      if (locationStatus !== 'denied') setLocationStatus('idle');
       return;
     }
 
@@ -94,11 +134,11 @@ export function RescueTeamDashboard() {
     return () => {
       navigator.geolocation.clearWatch(watchId);
     };
-  }, [task]);
+  }, [task, isOnline, locationStatus]);
 
   // Update status mutation
   const statusMutation = useMutation({
-    mutationFn: ({
+    mutationFn: async ({
       nextStatus,
       note,
     }: {
@@ -106,10 +146,55 @@ export function RescueTeamDashboard() {
       note?: string | null;
     }) => {
       if (!task) throw new Error('No active task');
-      return updateTaskStatus(task.assignment_id, nextStatus, note);
+
+      // If navigator is explicitly offline, enqueue immediately without failing request
+      if (!navigator.onLine) {
+        enqueue({
+          assignment_id: task.assignment_id,
+          status: nextStatus,
+          closing_note: note,
+        });
+        setQueueItems(listQueue());
+        return { isOfflineQueued: true, nextStatus };
+      }
+
+      try {
+        const data = await updateTaskStatus(task.assignment_id, nextStatus, note);
+        return { isOfflineQueued: false, nextStatus, data };
+      } catch (err: unknown) {
+        // Check if network error (e.g. status === 0 or no response from server)
+        const isNetworkErr =
+          err instanceof ApiError
+            ? err.status === 0
+            : (err instanceof Error && 'code' in err && (err as { code: string }).code === 'ERR_NETWORK') ||
+              !navigator.onLine;
+
+        if (isNetworkErr) {
+          enqueue({
+            assignment_id: task.assignment_id,
+            status: nextStatus,
+            closing_note: note,
+          });
+          setQueueItems(listQueue());
+          return { isOfflineQueued: true, nextStatus };
+        }
+        throw err;
+      }
     },
-    onSuccess: (updated) => {
+    onSuccess: (res) => {
       setServerError(null);
+      if (res.isOfflineQueued) {
+        if (res.nextStatus === 'resolved') {
+          setResolveModalOpen(false);
+          setJustResolved(true);
+          toast('info', 'Offline: Resolved update queued. Will sync automatically when online.');
+        } else {
+          toast('info', `Offline: Status updated to ${res.nextStatus.replace('_', ' ')} (queued)`);
+        }
+        return;
+      }
+
+      const updated = res.data!;
       if (updated.status === 'resolved') {
         setResolveModalOpen(false);
         setJustResolved(true);
@@ -152,6 +237,18 @@ export function RescueTeamDashboard() {
 
   return (
     <div className="max-w-md mx-auto px-3 sm:px-4 py-4 space-y-4">
+      {/* Offline Banner when disconnected */}
+      {!isOnline && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="p-3 bg-amber-600 text-white rounded-ui shadow-sm text-sm font-medium flex items-center gap-2 animate-in fade-in"
+        >
+          <WifiOff className="w-5 h-5 flex-shrink-0" />
+          <span>You are offline. Your updates will be sent automatically.</span>
+        </div>
+      )}
+
       {/* Top Header Card */}
       <div className="flex items-center justify-between p-3.5 bg-white rounded-ui border border-gray-200 shadow-sm">
         <div className="flex items-center gap-2.5">
@@ -265,6 +362,8 @@ export function RescueTeamDashboard() {
       {!isLoading && !isError && task && (
         <RescueTaskCard
           task={task}
+          effectiveStatus={effectiveStatus}
+          hasPendingSync={hasPendingSync}
           onUpdateStatus={handleNextStatus}
           isLoading={statusMutation.isPending}
         />
