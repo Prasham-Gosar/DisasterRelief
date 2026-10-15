@@ -34,7 +34,7 @@ def update_task_status(
     user: User = Depends(require_role(Role.rescue_team_member)),
 ):
     return DispatchService(db).update_task_status(
-        user, assignment_id, body.status, body.closing_note
+        user, assignment_id, body.status, body.closing_note, client_update_id=body.client_update_id
     )
 
 
